@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import 'antd/dist/antd.css';
 import './index.css';
-import { Select } from 'antd';
+import { Select, Form, Input, Button } from 'antd';
 import _ from 'lodash';
 
 const App = () => {
+  const [form] = Form.useForm();
   // 模拟仓库数据
   const [drawInfo, setDrawInfo] = useState({
     lanes: [],
@@ -16,7 +17,9 @@ const App = () => {
           id: '1f60bfa8-a72c-4c5f-81a7-3ec682de18ea',
           name: '线圈位置1',
           useForLanes: [
-            { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
+            // { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
+            // 模拟车道已失效
+            { label: '车道1', value: '58978fc7-1fee-4d97-97b0-6b702e03fe05' },
           ],
         },
         {
@@ -38,6 +41,78 @@ const App = () => {
   // Select选项
   const [selectOptions, setSelectOptions] = useState([]);
 
+  const updateAll = useCallback(
+    ({ lanes, emergencyLanes }) => {
+      const drawInfoCopy = {
+        ...drawInfo,
+      };
+
+      if (lanes && emergencyLanes) {
+        drawInfoCopy.lanes = lanes;
+        drawInfoCopy.emergencyLanes = emergencyLanes;
+      }
+
+      if (lanes) {
+        drawInfoCopy.lanes = lanes;
+      }
+
+      if (emergencyLanes) {
+        drawInfoCopy.emergencyLanes = emergencyLanes;
+      }
+
+      const selectOptions = [
+        ...drawInfoCopy.lanes.map((lane) => ({
+          label: lane.name,
+          value: lane.id,
+        })),
+        ...drawInfoCopy.emergencyLanes.map((emergencyLane) => ({
+          label: emergencyLane.name,
+          value: emergencyLane.id,
+        })),
+      ];
+
+      // 剔除已失效的选择了的选项
+      drawInfoCopy.jcCollectionModeCoil.collections.forEach(
+        (collectionItem) => {
+          collectionItem.useForLanes = collectionItem.useForLanes.filter(
+            (useForLane) => {
+              if (
+                selectOptions.some(
+                  (selectOption) => selectOption.value === useForLane.value
+                )
+              )
+                return true;
+              return false;
+            }
+          );
+        }
+      );
+
+      // 重新设置 form
+      drawInfoCopy.jcCollectionModeCoil.collections.forEach(
+        (collectionItem, index) => {
+          form.setFieldsValue({
+            analyze_config: {
+              drawInfo: {
+                jcCollectionModeCoil: {
+                  collections: {
+                    [index]: {
+                      useForLanes: collectionItem.useForLanes,
+                    },
+                  },
+                },
+              },
+            },
+          });
+        }
+      );
+
+      setSelectOptions(selectOptions);
+      setDrawInfo(drawInfoCopy);
+    },
+    [setSelectOptions, setDrawInfo, drawInfo]
+  );
+
   // 模拟接口获取车道和应急车道
   useEffect(() => {
     const lanes = [
@@ -48,56 +123,92 @@ const App = () => {
       { name: '应急车道1', id: '0e5bc8f4-d7f2-4386-91d0-ded36a1f896c' },
       { name: '应急车道2', id: '1400830b-bb1f-426e-b06a-2ec0c6557270' },
     ];
-    setDrawInfo({
-      ...drawInfo,
+    updateAll({
       lanes,
       emergencyLanes,
     });
   }, []);
 
-  // 监听 store 变化，并更新 selectOptions
-  useEffect(() => {
-    const { lanes, emergencyLanes } = drawInfo;
-    const selectOptions = [
-      ...lanes.map((lane) => ({ label: lane.name, value: lane.id })),
-      ...emergencyLanes.map((emergencyLane) => ({
-        label: emergencyLane.name,
-        value: emergencyLane.id,
-      })),
-    ];
-    const drawInfoCopy = _.cloneDeep(drawInfo);
-    drawInfoCopy.jcCollectionModeCoil.collections.forEach((collectionItem) => {
-      collectionItem.useForLanes = collectionItem.useForLanes.filter(
-        (useForLane) => {
-          for (let i = 0; i < selectOptions.length; i++) {
-            if (useForLane.value === selectOptions[i].value) {
-            }
-          }
-        }
-      );
-    });
-    setSelectOptions(selectOptions);
-  }, [drawInfo]);
   return (
     <>
-      {drawInfo.jcCollectionModeCoil.collections.map((collection) => {
-        const { id, name } = collection;
-        return (
-          <div key={id} style={{ display: 'flex' }}>
-            <h4>{name}</h4>
-            <Select
-              value={collection.useForLanes}
-              onChange={(value) => {
-                console.log(value);
-              }}
-              style={{ width: 120 }}
-              options={selectOptions}
-              labelInValue
-              mode="multiple"
-            />
-          </div>
-        );
-      })}
+      <Form
+        form={form}
+        initialValues={{
+          analyze_config: {
+            drawInfo: {
+              jcCollectionModeCoil: {
+                collections: drawInfo.jcCollectionModeCoil.collections,
+              },
+            },
+          },
+        }}
+      >
+        {drawInfo.jcCollectionModeCoil.collections.map((collection, index) => {
+          const { id, name, useForLanes } = collection;
+          return (
+            <div key={id} style={{ display: 'flex', aliginItems: 'center' }}>
+              <h4>{name}</h4>
+              <Select
+                value={useForLanes}
+                onChange={(value) => {
+                  console.log(value);
+                }}
+                style={{ width: 120 }}
+                options={selectOptions}
+                labelInValue
+                mode="multiple"
+              />
+              <Form.Item
+                name={[
+                  'analyze_config',
+                  'drawInfo',
+                  'jcCollectionModeCoil',
+                  'collections',
+                  index,
+                  'useForLanes',
+                ]}
+                // 直接通过 Form initialValues 传入初始值
+                // initialValue={useForLanes}
+              >
+                <Input type="hidden" />
+              </Form.Item>
+            </div>
+          );
+        })}
+      </Form>
+
+      <div>
+        <Button
+          onClick={() => {
+            form
+              .validateFields()
+              .then((values) => {
+                console.log(values);
+              })
+              .catch((errors) => {
+                console.log(errors);
+              });
+          }}
+        >
+          提交
+        </Button>
+      </div>
+      <div>
+        <Button
+          onClick={() => {
+            const { lanes } = _.cloneDeep(drawInfo);
+            lanes.push({
+              id: '7ed98496-3e17-482b-8922-28e3286b5dab',
+              name: '车道3',
+            });
+            updateAll({
+              lanes,
+            });
+          }}
+        >
+          新增车道3
+        </Button>
+      </div>
 
       {/* <Select
         value={[

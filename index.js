@@ -43,6 +43,7 @@ const App = () => {
 
   const updateAll = useCallback(
     ({ lanes, emergencyLanes }) => {
+      console.log(`updateAll: start`, _.cloneDeep(drawInfo));
       const drawInfoCopy = {
         ...drawInfo,
       };
@@ -88,25 +89,7 @@ const App = () => {
         }
       );
 
-      // 重新设置 form
-      drawInfoCopy.jcCollectionModeCoil.collections.forEach(
-        (collectionItem, index) => {
-          form.setFieldsValue({
-            analyze_config: {
-              drawInfo: {
-                jcCollectionModeCoil: {
-                  collections: {
-                    [index]: {
-                      useForLanes: collectionItem.useForLanes,
-                    },
-                  },
-                },
-              },
-            },
-          });
-        }
-      );
-
+      console.log(`updateAll: end`, _.cloneDeep(drawInfoCopy));
       setSelectOptions(selectOptions);
       setDrawInfo(drawInfoCopy);
     },
@@ -129,6 +112,28 @@ const App = () => {
     });
   }, []);
 
+  useEffect(() => {
+    const drawInfoCopy = _.cloneDeep(drawInfo);
+    // 重新设置 form
+    drawInfoCopy.jcCollectionModeCoil.collections.forEach(
+      (collectionItem, index) => {
+        form.setFieldsValue({
+          analyze_config: {
+            drawInfo: {
+              jcCollectionModeCoil: {
+                collections: {
+                  [index]: {
+                    useForLanes: collectionItem.useForLanes,
+                  },
+                },
+              },
+            },
+          },
+        });
+      }
+    );
+  }, [drawInfo]);
+
   return (
     <>
       <Form
@@ -150,8 +155,26 @@ const App = () => {
               <h4>{name}</h4>
               <Select
                 value={useForLanes}
-                onChange={(value) => {
-                  console.log(value);
+                onChange={(values) => {
+                  try {
+                    if (values.every((value) => value.label && value.value)) {
+                      const drawInfoCopy = _.cloneDeep(drawInfo);
+                      drawInfoCopy.jcCollectionModeCoil.collections[
+                        index
+                      ].useForLanes = values.map((value) => ({
+                        label: value.label,
+                        value: value.value,
+                      }));
+                      console.log({
+                        drawInfoCopy,
+                      });
+                      setDrawInfo(drawInfoCopy);
+                    } else {
+                      throw new Error('Select.onChange: 值类型异常');
+                    }
+                  } catch (error) {
+                    console.log(error);
+                  }
                 }}
                 style={{ width: 120 }}
                 options={selectOptions}
@@ -183,7 +206,11 @@ const App = () => {
             form
               .validateFields()
               .then((values) => {
-                console.log(values);
+                values.analyze_config.drawInfo.jcCollectionModeCoil.collections.forEach(
+                  (collection) => {
+                    console.table(collection.useForLanes);
+                  }
+                );
               })
               .catch((errors) => {
                 console.log(errors);
@@ -193,20 +220,74 @@ const App = () => {
           提交
         </Button>
       </div>
+
       <div>
         <Button
           onClick={() => {
             const { lanes } = _.cloneDeep(drawInfo);
+            if (lanes.some((lane) => lane.name === '车道2')) return;
             lanes.push({
-              id: '7ed98496-3e17-482b-8922-28e3286b5dab',
-              name: '车道3',
+              id: '609dde2b-bc25-4c80-8a87-384d64579fad',
+              name: '车道2',
             });
             updateAll({
               lanes,
             });
           }}
         >
-          新增车道3
+          新增车道2
+        </Button>
+        <Button
+          onClick={() => {
+            const { lanes } = _.cloneDeep(drawInfo);
+            const findIndex = lanes.findIndex((lane) => lane.name === '车道2');
+            if (findIndex > -1) {
+              lanes.splice(1, 1);
+              updateAll({
+                lanes,
+              });
+            }
+          }}
+        >
+          删除车道2
+        </Button>
+      </div>
+      <div>
+        <Button
+          onClick={() => {
+            const { emergencyLanes } = _.cloneDeep(drawInfo);
+            if (
+              emergencyLanes.some(
+                (emergencyLane) => emergencyLane.name === '应急车道2'
+              )
+            )
+              return;
+            emergencyLanes.push({
+              id: '47bfe77b-cc3c-4f99-99ad-c1755be4e29a',
+              name: '应急车道2',
+            });
+            updateAll({
+              emergencyLanes,
+            });
+          }}
+        >
+          新增应急车道2
+        </Button>
+        <Button
+          onClick={() => {
+            const { emergencyLanes } = _.cloneDeep(drawInfo);
+            const findIndex = emergencyLanes.findIndex(
+              (emergencyLane) => emergencyLane.name === '应急车道2'
+            );
+            if (findIndex > -1) {
+              emergencyLanes.splice(1, 1);
+              updateAll({
+                emergencyLanes,
+              });
+            }
+          }}
+        >
+          删除应急车道2
         </Button>
       </div>
 

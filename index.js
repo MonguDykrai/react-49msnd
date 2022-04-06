@@ -5,11 +5,16 @@ import './index.css';
 import { Select } from 'antd';
 
 const App = () => {
+  // 模拟仓库数据
   const [storeOptions, setStoreOptions] = useState({
     lanes: [],
     emergencyLanes: [],
   });
 
+  // Select选项
+  const [selectOptions, setSelectOptions] = useState([]);
+
+  // 模拟接口获取车道和应急车道
   useEffect(() => {
     const lanes = [
       { name: '车道1', id: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
@@ -25,31 +30,47 @@ const App = () => {
     });
   }, []);
 
-  const [selectOptions, setSelectOptions] = useState(
-    'f5469a18-9e07-4563-960d-05702f7592e0'
-  );
-
+  // 监听 store 变化
   useEffect(() => {
     const { lanes, emergencyLanes } = storeOptions;
-    selectOptions([...lanes, emergencyLanes]);
+    setSelectOptions([
+      ...lanes.map((lane) => ({ label: lane.name, value: lane.id })),
+      ...emergencyLanes.map((emergencyLane) => ({
+        label: emergencyLane.name,
+        value: emergencyLane.id,
+      })),
+    ]);
   }, [storeOptions]);
   return (
-    <Select
-      // value={value}
-      value={[
-        { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
-      ]}
-      onChange={(value) => {
-        console.log(value);
-      }}
-      style={{ width: 120 }}
-      options={[
-        { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
-        { label: '车道2', value: 'fdf002d24-26a7-41e3-8de5-ac76fa83ece4' },
-      ]}
-      labelInValue
-      mode="multiple"
-    />
+    <>
+      <Select
+        value={[
+          { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
+        ]}
+        onChange={(value) => {
+          console.log(value);
+        }}
+        style={{ width: 120 }}
+        options={selectOptions}
+        labelInValue
+        mode="multiple"
+      />
+      {/* <Select
+        value={[
+          { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
+        ]}
+        onChange={(value) => {
+          console.log(value);
+        }}
+        style={{ width: 120 }}
+        options={[
+          { label: '车道1', value: '245bc21e-4ecf-4615-80c0-75177d48a4fa' },
+          { label: '车道2', value: 'fdf002d24-26a7-41e3-8de5-ac76fa83ece4' },
+        ]}
+        labelInValue
+        mode="multiple"
+      /> */}
+    </>
   );
 };
 
